@@ -1,6 +1,6 @@
 [package]
 name = "rust-kanji-rand"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Henke Adolfsson <catears13@gmail.com>"]
 edition = "2018"
 
