@@ -39,6 +39,9 @@ jobs:
     - name: Build It
       run: cargo build --release --all-features
 
+    - name: Zip release
+      run: zip rust-kanji-rand.zip ./target/release/rust-kanji-rand
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -49,6 +52,7 @@ jobs:
         release_name: Release ${{ steps.tagName.outputs.tag }}
         draft: false
         prerelease: false
+
     - name: Upload Release
       id: upload-release
       uses: actions/upload-release-asset@v1
@@ -56,5 +60,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./targets/release/rust-kanji-rand
-        asset_name: rust-kanji-rand-v${{ steps.tagName.outputs.tag }}
+        asset_path: ./rust-kanji-rand.zip
+        asset_name: rust-kanji-rand-v${{ steps.tagName.outputs.tag }}.zip
+        asset_content_type: application/zip
