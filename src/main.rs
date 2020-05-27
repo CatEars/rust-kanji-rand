@@ -2,8 +2,13 @@ use dirs::config_dir;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde_derive::{Deserialize, Serialize};
-use std::fs::File;
+use std::fs::{File, create_dir_all};
 use std::io::prelude::*;
+
+fn initial_config_data() -> String {
+    String::from("{\"idx\":0,\"kanji\":[\"金\",\"耳\",\"子\",\"電\",\"土\",\"男\",\"雨\",\"文\",\"気\",\"名\",\"父\",\"音\",\"下\",\"女\",\"年\",\"村\",\"木\",\"一\",\"赤\",\"休\",\"八\",\"二\",\"石\",\"川\",\"午\",\"東\",\"月\",\"貝\",\"中\",\"入\",\"字\",\"花\",\"生\",\"夕\",\"人\",\"四\",\"西\",\"左\",\"話\",\"車\",\"天\",\"食\",\"九\",\"山\",\"手\",\"行\",\"目\",\"六\",\"半\",\"先\",\"長\",\"力\",\"時\",\"足\",\"何\",\"今\",\"田\",\"王\",\"前\",\"高\",\"本\",\"間\",\"青\",\"友\",\"火\",\"外\",\"五\",\"右\",\"三\",\"千\",\"空\",\"竹\",\"聞\",\"草\",\"後\",\"小\",\"来\",\"町\",\"毎\",\"立\",\"学\",\"森\",\"校\",\"百\",\"林\",\"見\",\"糸\",\"口\",\"円\",\"出\",\"母\",\"北\",\"早\",\"南\",\"七\",\"読\",\"万\",\"玉\",\"大\",\"正\",\"上\",\"十\",\"水\",\"分\",\"犬\",\"日\",\"書\",\"語\",\"国\",\"虫\",\"白\"]}")
+}
+
 
 #[derive(Deserialize, Serialize)]
 struct KanjiList {
@@ -11,65 +16,42 @@ struct KanjiList {
     kanji: Vec<String>,
 }
 
-fn ensure_config_or_fail() -> std::path::PathBuf {
-    let cfg = config_dir();
 
-    let cfg = match cfg {
-        Some(x) => x,
-        None => {
-            eprint!("Could not find configuration directory");
-            std::process::exit(1);
-        }
-    };
+fn ensure_config_or_fail() -> std::path::PathBuf {
+    let cfg = config_dir().unwrap();
+
+    let my_config_dir = cfg.join("rust-kanji-rand");
+    create_dir_all(my_config_dir).unwrap();
 
     let my_config = cfg.join("rust-kanji-rand").join("config.json");
 
     if !my_config.exists() {
-        eprint!("My config.json file did not exist. Exiting..");
-        std::process::exit(1);
+        write_config(&initial_config_data());
     }
+
     my_config
 }
 
 fn file_to_str(fpath: &std::path::PathBuf) -> String {
-    let mut file = match File::open(&fpath) {
-        Err(why) => panic!("Couldnt open {}: {}", fpath.display(), why),
-        Ok(file) => file,
-    };
-
-    let mut s = String::new();
-    match file.read_to_string(&mut s) {
-        Err(why) => panic!("Couldnt read {}: {}", fpath.display(), why),
-        Ok(_file) => s,
-    }
+    let mut file = File::open(&fpath).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    contents
 }
 
 fn read_kanji_list(json_str: &String) -> KanjiList {
-    match serde_json::from_str(&json_str) {
-        Err(why) => panic!(
-            "Couldn't read json correctly: {}. Reason: {}",
-            json_str, why
-        ),
-        Ok(list) => list,
-    }
+    serde_json::from_str(&json_str).unwrap()
 }
 
 fn write_config(json_str: &String) {
-    let cfg = match config_dir() {
-        None => panic!("No config directory??"),
-        Some(x) => x,
-    };
+    let cfg = config_dir().unwrap();
 
     let config_path = cfg.join("rust-kanji-rand").join("config.json");
 
-    let mut file = match File::create(&config_path) {
-        Err(why) => panic!("Couldn't open {}: {}", config_path.display(), why),
-        Ok(file) => file,
-    };
-
-    match file.write(json_str.as_bytes()) {
-        Err(why) => panic!("Could not write kanji to file! Reason: {}", why),
-        Ok(_) => (),
+    if let Ok(mut file) = File::create(&config_path) {
+        file.write(json_str.as_bytes()).unwrap();
+    } else {
+        panic!("Couldn't open {}", config_path.display());
     }
 }
 
@@ -80,10 +62,9 @@ fn update_and_save(list: &mut KanjiList) {
         let mut rng = thread_rng();
         list.kanji.shuffle(&mut rng);
     }
-    let serialized = match serde_json::to_string(&list) {
-        Ok(x) => x,
-        Err(why) => panic!("Could not serialize the kanji list! Reason: {}", why),
-    };
+    let serialized = serde_json::to_string(&list)
+        .expect("Could not serialize the kanji list!");
+
     write_config(&serialized);
 }
 
